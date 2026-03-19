@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct ClassicAppAccount: Equatable {
+struct ClassicAppAccount: Equatable, CustomStringConvertible {
     let userID: String
     let displayName: String?
     let avatarURL: URL?
@@ -17,6 +17,13 @@ struct ClassicAppAccount: Equatable {
     
     let cryptoStoreURL: URL
     let cryptoStorePassphrase: String
+    
+    let accessToken: String? // For avatar loading
+    
+    /// Custom `CustomStringConvertible` without the access token.
+    var description: String {
+        "ClassicAppAccount(userID: \(userID), homeserverURL: \(homeserverURL))"
+    }
 }
 
 // MARK: NSCoding Types
@@ -26,6 +33,8 @@ final class ClassicAppMXAccount: NSObject, NSCoding {
     var userID: String
     /// The homeserver url (ex: "https://matrix.org").
     var homeserverURL: URL
+    /// The access token to create a MXRestClient.
+    var accessToken: String?
     
     /// Disable the account without logging out (NO by default).
     ///
@@ -38,6 +47,11 @@ final class ClassicAppMXAccount: NSObject, NSCoding {
     /// Whether or not the account is considered active.
     var isActive: Bool {
         !isDisabled && !isSoftLogout
+    }
+    
+    /// Override the existing `CustomStringConvertible` conformance.
+    override var description: String {
+        "ClassicAppMXAccount(userID: \(userID), homeserverURL: \(homeserverURL), isDisabled: \(isDisabled), isSoftLogout: \(isSoftLogout))"
     }
     
     // MARK: NSCoding
@@ -74,6 +88,8 @@ final class ClassicAppMXAccount: NSObject, NSCoding {
         
         self.userID = userID
         self.homeserverURL = homeserverURL
+        
+        accessToken = coder.decodeObject(forKey: Keys.accessToken) as? String
         
         isDisabled = coder.decodeBool(forKey: Keys.isDisabled)
         isSoftLogout = coder.decodeBool(forKey: Keys.isSoftLogout)

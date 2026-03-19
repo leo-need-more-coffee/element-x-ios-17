@@ -72,7 +72,8 @@ class ClassicAppAccountManager {
                                  serverName: serverName,
                                  homeserverURL: mxAccount.homeserverURL,
                                  cryptoStoreURL: cryptoStoreURL(for: userID),
-                                 cryptoStorePassphrase: cryptoStorePassphrase.base64EncodedString())
+                                 cryptoStorePassphrase: cryptoStorePassphrase.base64EncodedString(),
+                                 accessToken: mxAccount.accessToken)
     }
     
     private func loadUser(for mxAccount: ClassicAppMXAccount) -> ClassicAppMXUser? {

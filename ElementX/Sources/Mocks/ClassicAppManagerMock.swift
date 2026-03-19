@@ -27,6 +27,7 @@ extension ClassicAppAccount {
                           serverName: "matrix.org",
                           homeserverURL: "https://matrix-client.matrix.org/",
                           cryptoStoreURL: .cachesDirectory,
-                          cryptoStorePassphrase: "1234567890")
+                          cryptoStorePassphrase: "1234567890",
+                          accessToken: nil)
     }
 }

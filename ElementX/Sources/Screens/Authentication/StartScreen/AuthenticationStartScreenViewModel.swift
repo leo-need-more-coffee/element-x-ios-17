@@ -29,6 +29,7 @@ class AuthenticationStartScreenViewModel: AuthenticationStartScreenViewModelType
          provisioningParameters: AccountProvisioningParameters?,
          isBugReportServiceEnabled: Bool,
          appSettings: AppSettings,
+         mediaProvider: MediaProviderProtocol?,
          userIndicatorController: UserIndicatorControllerProtocol) {
         self.authenticationService = authenticationService
         self.provisioningParameters = provisioningParameters
@@ -64,7 +65,7 @@ class AuthenticationStartScreenViewModel: AuthenticationStartScreenViewModelType
                                                hideBrandChrome: appSettings.hideBrandChrome)
         }
         
-        super.init(initialViewState: initialViewState)
+        super.init(initialViewState: initialViewState, mediaProvider: mediaProvider)
     }
     
     override func process(viewAction: AuthenticationStartScreenViewAction) {

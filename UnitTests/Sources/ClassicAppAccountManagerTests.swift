@@ -79,6 +79,7 @@ extension ClassicAppAccount {
                                  serverName: "matrix.org",
                                  homeserverURL: "https://matrix-client.matrix.org/",
                                  cryptoStoreURL: classicAppAccountManager.cryptoStoreURL(for: userID),
-                                 cryptoStorePassphrase: cryptoStorePassphrase.base64EncodedString())
+                                 cryptoStorePassphrase: cryptoStorePassphrase.base64EncodedString(),
+                                 accessToken: nil)
     }
 }

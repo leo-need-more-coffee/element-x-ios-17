@@ -259,10 +259,17 @@ class AuthenticationFlowCoordinator: FlowCoordinatorProtocol {
     }
     
     private func showStartScreen(fromState: State, applying provisioningParameters: AccountProvisioningParameters? = nil) {
+        let mediaProvider = authenticationService.classicAppAccount.map { account in
+            MediaProvider(mediaLoader: ClassicAppMediaLoader(classicAppAccount: account),
+                          imageCache: .onlyInMemory,
+                          homeserverReachabilityPublisher: appMediator.networkMonitor.reachabilityPublisher) // Close enough approximation
+        }
+        
         let parameters = AuthenticationStartScreenParameters(authenticationService: authenticationService,
                                                              provisioningParameters: provisioningParameters,
                                                              isBugReportServiceEnabled: bugReportService.isEnabled,
                                                              appSettings: appSettings,
+                                                             mediaProvider: mediaProvider,
                                                              userIndicatorController: userIndicatorController)
         let coordinator = AuthenticationStartScreenCoordinator(parameters: parameters)
         

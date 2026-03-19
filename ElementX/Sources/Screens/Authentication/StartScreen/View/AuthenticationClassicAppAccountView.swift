@@ -46,10 +46,11 @@ struct AuthenticationClassicAppAccountView: View {
     
     var profile: some View {
         VStack(spacing: 16) {
-            PlaceholderAvatarImage(name: classicAppAccount.displayName,
-                                   contentID: classicAppAccount.userID)
-                .scaledFrame(size: 96)
-                .avatarShape(.circle, size: 96)
+            LoadableAvatarImage(url: classicAppAccount.avatarURL,
+                                name: classicAppAccount.displayName,
+                                contentID: classicAppAccount.userID,
+                                avatarSize: .user(on: .classicAppAccount),
+                                mediaProvider: context.mediaProvider)
             
             VStack(spacing: 0) {
                 Text(L10n.screenOnboardingWelcomeBack)
