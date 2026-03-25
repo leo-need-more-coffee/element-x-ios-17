@@ -12,6 +12,7 @@ import MatrixRustSDK
 // sourcery: AutoMockable
 protocol ClassicAppManagerProtocol {
     func loadAccounts() throws -> [ClassicAppAccount]
+    func secretsBundle(for account: ClassicAppAccount) async throws -> SecretsBundleWithUserId
 }
 
 enum ClassicAppManagerError: Error {
@@ -68,5 +69,10 @@ final class ClassicAppManager: ClassicAppManagerProtocol {
                                                       cryptoStorePassphrase: cryptoStorePassphrase)
         accountManager.loadAccounts()
         return accountManager.accounts
+    }
+    
+    func secretsBundle(for account: ClassicAppAccount) async throws -> SecretsBundleWithUserId {
+        try await SecretsBundleWithUserId.fromDatabase(databasePath: account.cryptoStoreURL.path(percentEncoded: false),
+                                                       passphrase: account.cryptoStorePassphrase)
     }
 }

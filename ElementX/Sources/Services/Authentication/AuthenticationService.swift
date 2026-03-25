@@ -265,12 +265,11 @@ class AuthenticationService: AuthenticationServiceProtocol {
         // Technically the SDK makes sure the secrets are for the correct account, but as
         // we want to verify the classic account regardless which flow was used, it seems
         // sane to avoid loading the secrets when we know that they're not relevant.
-        if let classicAppAccount, classicAppAccount.userID == (try? client.userId()) {
+        if let classicAppAccount, classicAppAccount.userID == (try? client.userId()), let classicAppManager {
             MXLog.info("Found matching classic app account, importing secrets.")
             
             do {
-                let secrets = try await SecretsBundleWithUserId.fromDatabase(databasePath: classicAppAccount.cryptoStoreURL.path(percentEncoded: false),
-                                                                             passphrase: classicAppAccount.cryptoStorePassphrase)
+                let secrets = try await classicAppManager.secretsBundle(for: classicAppAccount)
                 try await client.encryption().importSecretsBundle(secretsBundle: secrets)
                 
                 MXLog.info("Secrets imported.")

@@ -14,6 +14,7 @@ import Testing
 @MainActor
 struct AuthenticationServiceTests {
     var client: ClientSDKMock!
+    var encryption: EncryptionSDKMock!
     var userSessionStore: UserSessionStoreMock!
     var encryptionKeyProvider: MockEncryptionKeyProvider!
     var service: AuthenticationService!
@@ -90,19 +91,68 @@ struct AuthenticationServiceTests {
         #expect(service.homeserver.value == .init(address: "matrix.org", loginMode: .unknown))
     }
     
+    @Test
+    @MainActor
+    mutating func classicAppAccountSecretsBundleIsUsed() async {
+        // Given an authentication service with an Element Classic account for Alice.
+        setup(classicAppAccounts: [.mockAlice])
+        guard case .success = await service.configure(for: "matrix.org", flow: .login) else {
+            Issue.record("The service should be configured successfully.")
+            return
+        }
+        #expect(service.flow == .login)
+        
+        // When logging in as Alice.
+        guard case .success = await service.login(username: "alice", password: "12345678", initialDeviceName: nil, deviceID: nil) else {
+            Issue.record("The account should login successfully.")
+            return
+        }
+        #expect(client.loginUsernamePasswordInitialDeviceNameDeviceIdCallsCount == 1)
+        
+        // Then Alice's secrets from Element Classic should be imported.
+        #expect(encryption.importSecretsBundleSecretsBundleCalled)
+    }
+    
+    @Test
+    @MainActor
+    mutating func classicAppAccountSecretsBundleIsIgnored() async {
+        // Given an authentication service with an Element Classic account for Dan.
+        setup(classicAppAccounts: [.mockDan])
+        guard case .success = await service.configure(for: "matrix.org", flow: .login) else {
+            Issue.record("The service should be configured successfully.")
+            return
+        }
+        #expect(service.flow == .login)
+        
+        // When logging in as Alice
+        guard case .success = await service.login(username: "alice", password: "12345678", initialDeviceName: nil, deviceID: nil) else {
+            Issue.record("The account should login successfully.")
+            return
+        }
+        #expect(client.loginUsernamePasswordInitialDeviceNameDeviceIdCallsCount == 1)
+        
+        // Then Dan's secrets from Element Calssic should not be imported into Alice's client.
+        #expect(!encryption.importSecretsBundleSecretsBundleCalled)
+    }
+    
     // MARK: - Helpers
     
-    private mutating func setup(serverAddress: String = "matrix.org") {
+    private mutating func setup(serverAddress: String = "matrix.org", classicAppAccounts: [ClassicAppAccount] = []) {
         let configuration: AuthenticationClientFactoryMock.Configuration = .init()
         let clientFactory = AuthenticationClientFactoryMock(configuration: configuration)
         
         client = configuration.homeserverClients[serverAddress]
+        encryption = EncryptionSDKMock()
+        client.encryptionReturnValue = encryption
+        
         userSessionStore = UserSessionStoreMock(configuration: .init())
         encryptionKeyProvider = MockEncryptionKeyProvider()
         
+        let classicAppManager = ClassicAppManagerMock(.init(accounts: classicAppAccounts, secretsBundle: .init(noHandle: .init())))
+        
         service = AuthenticationService(userSessionStore: userSessionStore,
                                         encryptionKeyProvider: encryptionKeyProvider,
-                                        classicAppManager: nil,
+                                        classicAppManager: classicAppManager,
                                         clientFactory: clientFactory,
                                         appSettings: ServiceLocator.shared.settings,
                                         appHooks: AppHooks())

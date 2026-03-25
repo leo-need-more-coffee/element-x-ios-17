@@ -6,20 +6,34 @@
 //
 
 import Foundation
+import MatrixRustSDK
 
 extension ClassicAppManagerMock {
     struct Configuration {
-        let accounts: [ClassicAppAccount]
+        var accounts: [ClassicAppAccount]
+        var secretsBundle: SecretsBundleWithUserId?
     }
     
     convenience init(_ configuration: Configuration) {
         self.init()
         
         loadAccountsClosure = { configuration.accounts }
+        secretsBundleForReturnValue = configuration.secretsBundle
     }
 }
 
 extension ClassicAppAccount {
+    static var mockAlice: ClassicAppAccount {
+        ClassicAppAccount(userID: "@alice:matrix.org",
+                          displayName: "Alice",
+                          avatarURL: nil,
+                          serverName: "matrix.org",
+                          homeserverURL: "https://matrix-client.matrix.org/",
+                          cryptoStoreURL: .cachesDirectory,
+                          cryptoStorePassphrase: "1234567890",
+                          accessToken: nil)
+    }
+    
     static var mockDan: ClassicAppAccount {
         ClassicAppAccount(userID: "@dan:matrix.org",
                           displayName: "Dan",

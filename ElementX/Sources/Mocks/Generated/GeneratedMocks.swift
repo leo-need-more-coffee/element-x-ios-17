@@ -2309,6 +2309,80 @@ class ClassicAppManagerMock: ClassicAppManagerProtocol, @unchecked Sendable {
             return loadAccountsReturnValue
         }
     }
+    //MARK: - secretsBundle
+
+    var secretsBundleForThrowableError: Error?
+    var secretsBundleForUnderlyingCallsCount = 0
+    var secretsBundleForCallsCount: Int {
+        get {
+            if Thread.isMainThread {
+                return secretsBundleForUnderlyingCallsCount
+            } else {
+                var returnValue: Int? = nil
+                DispatchQueue.main.sync {
+                    returnValue = secretsBundleForUnderlyingCallsCount
+                }
+
+                return returnValue!
+            }
+        }
+        set {
+            if Thread.isMainThread {
+                secretsBundleForUnderlyingCallsCount = newValue
+            } else {
+                DispatchQueue.main.sync {
+                    secretsBundleForUnderlyingCallsCount = newValue
+                }
+            }
+        }
+    }
+    var secretsBundleForCalled: Bool {
+        return secretsBundleForCallsCount > 0
+    }
+    var secretsBundleForReceivedAccount: ClassicAppAccount?
+    var secretsBundleForReceivedInvocations: [ClassicAppAccount] = []
+
+    var secretsBundleForUnderlyingReturnValue: SecretsBundleWithUserId!
+    var secretsBundleForReturnValue: SecretsBundleWithUserId! {
+        get {
+            if Thread.isMainThread {
+                return secretsBundleForUnderlyingReturnValue
+            } else {
+                var returnValue: SecretsBundleWithUserId? = nil
+                DispatchQueue.main.sync {
+                    returnValue = secretsBundleForUnderlyingReturnValue
+                }
+
+                return returnValue!
+            }
+        }
+        set {
+            if Thread.isMainThread {
+                secretsBundleForUnderlyingReturnValue = newValue
+            } else {
+                DispatchQueue.main.sync {
+                    secretsBundleForUnderlyingReturnValue = newValue
+                }
+            }
+        }
+    }
+    var secretsBundleForClosure: ((ClassicAppAccount) async throws -> SecretsBundleWithUserId)?
+
+    func secretsBundle(for account: ClassicAppAccount) async throws -> SecretsBundleWithUserId {
+        if let error = secretsBundleForThrowableError {
+            throw error
+        }
+        secretsBundleForCallsCount += 1
+        secretsBundleForReceivedAccount = account
+        DispatchQueue.main.async {
+            self.secretsBundleForReceivedInvocations.append(account)
+        }
+        if let secretsBundleForClosure = secretsBundleForClosure {
+            return try await secretsBundleForClosure(account)
+        } else {
+            return secretsBundleForReturnValue
+        }
+    }
 }
 class ClientProxyMock: ClientProxyProtocol, @unchecked Sendable {
     var actionsPublisher: AnyPublisher<ClientProxyAction, Never> {

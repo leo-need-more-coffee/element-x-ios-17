@@ -139,26 +139,120 @@ final class AuthenticationStartScreenViewModelTests {
         #expect(authenticationService.homeserver.value.loginMode == .password)
     }
     
-    @Test func classicAppAccount() { }
+    // MARK: - Classic App Account
     
-    // Classic app account without well-known file (use the homeserver URL)
-    // Classic app account with provisioning link (don't show the classic account?)
-    // Single provider with matching Classic app account (show the classic account)
-    // Single provider with disallowed Classic app account (don't show the classic account)
+    @Test
+    func classicAppAccount() async throws {
+        // Given a view model with a Classic app account whose server name resolves successfully.
+        let classicAppAccount = makeClassicAppAccount()
+        setupViewModel(classicAppAccount: classicAppAccount)
+        guard case .welcomeBack(let account) = context.viewState.classicAppMode else {
+            Issue.record("Expected classicAppMode to be .welcomeBack")
+            return
+        }
+        #expect(account == classicAppAccount)
+        
+        // When continuing with the Classic app account the authentication service should be used and the screen
+        // should request to continue the flow without any server selection needed.
+        let deferred = deferFulfillment(viewModel.actions) { $0.isLoginDirectlyWithOIDC }
+        context.send(viewAction: .continueWithClassic(classicAppAccount))
+        try await deferred.fulfill()
+        
+        #expect(clientFactory.makeClientHomeserverAddressSessionDirectoriesPassphraseClientSessionDelegateAppSettingsAppHooksCallsCount == 1)
+        #expect(clientFactory.makeClientHomeserverAddressSessionDirectoriesPassphraseClientSessionDelegateAppSettingsAppHooksReceivedArguments?.homeserverAddress == "company.com")
+        #expect(authenticationService.homeserver.value.loginMode == .oidc(supportsCreatePrompt: false))
+        #expect(client.urlForOidcOidcConfigurationPromptLoginHintDeviceIdAdditionalScopesReceivedArguments?.loginHint == "mxid:\(classicAppAccount.userID)")
+    }
+    
+    @Test
+    func classicAppAccountWithoutWellKnown() async throws {
+        // Given a view model where the Classic app account's server name has no well-known file.
+        let classicAppAccount = makeClassicAppAccount(serverName: "unknown-server.org",
+                                                      homeserverURL: "https://matrix.company.com")
+        setupViewModel(classicAppAccount: classicAppAccount)
+        guard case .welcomeBack(let account) = context.viewState.classicAppMode else {
+            Issue.record("Expected classicAppMode to be .welcomeBack")
+            return
+        }
+        #expect(account == classicAppAccount)
+        
+        // When continuing with the Classic app account the authentication service should be used with the direct homeserver URL
+        // and the screen should request to continue the flow without any server selection needed.
+        let deferred = deferFulfillment(viewModel.actions) { $0.isLoginDirectlyWithOIDC }
+        context.send(viewAction: .continueWithClassic(classicAppAccount))
+        try await deferred.fulfill()
+        
+        #expect(clientFactory.makeClientHomeserverAddressSessionDirectoriesPassphraseClientSessionDelegateAppSettingsAppHooksCallsCount == 2)
+        #expect(clientFactory.makeClientHomeserverAddressSessionDirectoriesPassphraseClientSessionDelegateAppSettingsAppHooksReceivedArguments?.homeserverAddress == "https://matrix.company.com")
+        #expect(authenticationService.homeserver.value.loginMode == .oidc(supportsCreatePrompt: false))
+        #expect(client.urlForOidcOidcConfigurationPromptLoginHintDeviceIdAdditionalScopesReceivedArguments?.loginHint == "mxid:\(classicAppAccount.userID)")
+    }
+    
+    @Test
+    func classicAppAccountWithProvisioningLink() {
+        // Given a view model that has been provisioned with a provisioning link (and a classic account exists).
+        let classicAppAccount = makeClassicAppAccount()
+        setupViewModel(classicAppAccount: classicAppAccount,
+                       provisioningParameters: .init(accountProvider: "company.com", loginHint: nil))
+        
+        // Then the Classic app account should not be shown — provisioning takes precedence.
+        #expect(context.viewState.classicAppMode == nil)
+    }
+    
+    @Test
+    func singleProviderWithMatchingClassicAppAccount() {
+        // Given a view model for an app that only allows a single provider that matches the Classic account's server.
+        let classicAppAccount = makeClassicAppAccount(serverName: "company.com",
+                                                      homeserverURL: "https://matrix.company.com")
+        setAllowedAccountProviders(["company.com"])
+        setupViewModel(classicAppAccount: classicAppAccount)
+        
+        // Then the Classic app account should be shown as a welcome-back option.
+        guard case .welcomeBack(let account) = context.viewState.classicAppMode else {
+            Issue.record("Expected classicAppMode to be .welcomeBack")
+            return
+        }
+        #expect(account == classicAppAccount)
+    }
+    
+    @Test
+    func singleProviderWithDisallowedClassicAppAccount() {
+        // Given a view model for an app that only allows a single provider that does NOT match the Classic account's server.
+        let classicAppAccount = makeClassicAppAccount(serverName: "other-server.org",
+                                                      homeserverURL: "https://matrix.other-server.org")
+        setAllowedAccountProviders(["company.com"])
+        setupViewModel(classicAppAccount: classicAppAccount)
+        
+        // Then the Classic app account should not be shown since the server is not in the allowed providers.
+        #expect(context.viewState.classicAppMode == nil)
+    }
     
     // MARK: - Helpers
     
-    private func setupViewModel(provisioningParameters: AccountProvisioningParameters? = nil, supportsOIDC: Bool = true) {
+    private func setupViewModel(classicAppAccount: ClassicAppAccount? = nil,
+                                provisioningParameters: AccountProvisioningParameters? = nil,
+                                supportsOIDC: Bool = true) {
         // Manually create a configuration as the default homeserver address setting is immutable.
         client = ClientSDKMock(configuration: .init(oidcLoginURL: supportsOIDC ? "https://account.company.com/authorize" : nil,
                                                     supportsOIDCCreatePrompt: false,
                                                     supportsPasswordLogin: true))
-        let configuration = AuthenticationClientFactoryMock.Configuration(homeserverClients: ["company.com": client])
+        // Map both the server name and the homeserver URL so fallback lookups work.
+        let homeserverClients: [String: ClientSDKMock] = ["company.com": client,
+                                                          "https://matrix.company.com": client]
+        let configuration = AuthenticationClientFactoryMock.Configuration(homeserverClients: homeserverClients)
+        
+        let classicAppManager: ClassicAppManagerMock?
+        if let classicAppAccount {
+            classicAppManager = ClassicAppManagerMock()
+            classicAppManager?.loadAccountsReturnValue = [classicAppAccount]
+        } else {
+            classicAppManager = nil
+        }
         
         clientFactory = AuthenticationClientFactoryMock(configuration: configuration)
         authenticationService = AuthenticationService(userSessionStore: UserSessionStoreMock(configuration: .init()),
                                                       encryptionKeyProvider: EncryptionKeyProvider(),
-                                                      classicAppManager: nil,
+                                                      classicAppManager: classicAppManager,
                                                       clientFactory: clientFactory,
                                                       appSettings: appSettings,
                                                       appHooks: AppHooks())
@@ -172,6 +266,18 @@ final class AuthenticationStartScreenViewModelTests {
         
         // Add a fake window in order for the OIDC flow to continue
         viewModel.context.send(viewAction: .updateWindow(UIWindow()))
+    }
+    
+    private func makeClassicAppAccount(serverName: String = "company.com",
+                                       homeserverURL: URL = "https://matrix.company.com") -> ClassicAppAccount {
+        ClassicAppAccount(userID: "@user:\(serverName)",
+                          displayName: "Classic User",
+                          avatarURL: nil,
+                          serverName: serverName,
+                          homeserverURL: homeserverURL,
+                          cryptoStoreURL: "file:///tmp/crypto-store",
+                          cryptoStorePassphrase: "passphrase",
+                          accessToken: nil)
     }
     
     private func setAllowedAccountProviders(_ providers: [String]) {
