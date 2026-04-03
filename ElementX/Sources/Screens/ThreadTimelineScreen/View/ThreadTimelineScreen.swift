@@ -33,8 +33,10 @@ struct ThreadTimelineScreen: View {
             .timelineMediaPreview(viewModel: $context.mediaPreviewViewModel)
             .overlay(alignment: .top) {
                 if timelineContext.viewState.floatingTimelineDateEnabled {
-                    FloatingDateBadge(dateText: timelineContext.floatingDateText)
-                        .padding(.top, 13)
+                    FloatingDateBadge(dateText: timelineContext.floatingDateText) {
+                        timelineContext.send(viewAction: .scrollToFirstItemForCurrentDate)
+                    }
+                    .padding(.top, 13)
                 }
             }
             .overlay(alignment: .bottomTrailing) {

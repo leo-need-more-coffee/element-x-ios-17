@@ -93,7 +93,9 @@ struct RoomScreen: View {
     @ViewBuilder
     private var dateBadge: some View {
         if timelineContext.viewState.floatingTimelineDateEnabled, !isVoiceOverEnabled {
-            FloatingDateBadge(dateText: timelineContext.floatingDateText)
+            FloatingDateBadge(dateText: timelineContext.floatingDateText) {
+                timelineContext.send(viewAction: .scrollToFirstItemForCurrentDate)
+            }
         }
     }
     
