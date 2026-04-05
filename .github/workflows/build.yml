@@ -2,7 +2,7 @@ name: Build IPA
 
 on:
   push:
-    branches: [ develop ]
+    branches: [ ios17-base ]
   workflow_dispatch:
 
 jobs:
