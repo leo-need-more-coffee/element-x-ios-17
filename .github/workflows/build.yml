@@ -33,33 +33,15 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
-      - name: Build (unsigned)
+      - name: Build (simulator)
         run: |
           xcodebuild \
             -project ElementX.xcodeproj \
             -scheme ElementX \
             -configuration Debug \
-            -destination 'generic/platform=iOS' \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             DEVELOPMENT_TEAM="" \
-            build 2>&1 | tail -100
-
-      - name: Package IPA (unsigned)
-        run: |
-          APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "ElementX.app" -type d | head -1)
-          if [ -z "$APP_PATH" ]; then
-            echo "ElementX.app not found"
-            exit 1
-          fi
-          mkdir -p build/Payload
-          cp -r "$APP_PATH" build/Payload/
-          cd build && zip -r ElementX-unsigned.ipa Payload
-
-      - name: Upload IPA
-        uses: actions/upload-artifact@v4
-        with:
-          name: ElementX-unsigned
-          path: build/ElementX-unsigned.ipa
-          retention-days: 7
+            build 2>&1 | tail -200
